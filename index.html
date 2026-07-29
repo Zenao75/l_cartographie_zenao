@@ -101,7 +101,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .sb-list{flex:1;overflow-y:auto;padding:8px 10px}
 .sb-list-title{font-size:9.5px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.9px;padding:4px 4px 8px}
 .sb-item{
-  display:flex;align-items:flex-start;gap:7px;
+  display:flex;align-items:center;gap:7px;
   padding:6px 7px;border-radius:7px;
   cursor:pointer;font-size:11.5px;font-weight:500;
   color:var(--text);transition:background var(--tr);
@@ -110,7 +110,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);font-
 .sb-item:hover{background:var(--bg)}
 .sb-item.active{background:var(--stella-l);border-color:var(--stella)}
 .sb-item-dot{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-.sb-item-name{flex:1;overflow:visible;text-overflow:unset;white-space:normal;line-height:1.35}
+.sb-item-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb-item-city{font-size:10px;color:var(--faint);white-space:nowrap}
 
 /* ── MAP ── */
 .map-wrap{flex:1;position:relative;border-radius:12px;overflow:hidden;box-shadow:var(--sh);border:1px solid var(--border)}
@@ -201,6 +202,17 @@ tbody tr:hover{background:var(--surface2)}
   cursor:pointer;transition:all var(--tr);font-family:inherit;
 }
 .rcard-btn:hover{border-color:var(--stella);color:var(--stella);background:var(--stella-l)}
+
+/* ── INACTIVE STATE (grisé, sans barré, lisible) ── */
+.res-inactive{opacity:.62;filter:grayscale(85%)}
+.rcard.res-inactive{position:relative;background:#FAFAFB}
+.rcard-status-badge{
+  position:absolute;top:10px;right:10px;
+  background:#E4E6EA;color:#6B7688;
+  font-size:9.5px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;
+  padding:2px 9px;border-radius:12px;z-index:2;
+  border:1px solid #D5D8DE;
+}
 
 /* ── MODAL ── */
 .overlay{
@@ -557,9 +569,17 @@ function initMap() {
   L.control.zoom({position: 'bottomright'}).addTo(map);
 }
 
-function makeIcon(brand) {
+function makeIcon(brand, active) {
   const s = brand.toLowerCase().includes('stella');
   const c = s ? '#1B63D6' : '#20A862';
+  if (active === false) {
+    return L.divIcon({
+      html: `<div style="width:13px;height:13px;border-radius:50%;background:#fff;border:2.5px dashed ${c};box-shadow:0 1px 4px rgba(0,0,0,.18);position:relative;">
+        <div style="position:absolute;top:50%;left:50%;width:4px;height:4px;background:${c};border-radius:50%;transform:translate(-50%,-50%);opacity:.6"></div>
+      </div>`,
+      className: '', iconSize: [13, 13], iconAnchor: [6.5, 6.5], popupAnchor: [0, -8]
+    });
+  }
   return L.divIcon({
     html: `<div style="width:12px;height:12px;background:${c};border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2);"></div>`,
     className: '', iconSize: [12, 12], iconAnchor: [6, 6], popupAnchor: [0, -8]
@@ -609,6 +629,7 @@ async function loadCSV() {
   const iNoteBooking = col('note booking', 'booking note', 'note');
   const iPdf = col('fiches résidences', 'fiches residences', 'fiche pdf', 'pdf');
   const iWeb = col('site internet', 'site', 'website', 'url', 'lien');
+  const iActive = col('active', 'actif');
 
   return rows.slice(1)
     .map(l => parseRow(l))
@@ -627,6 +648,7 @@ async function loadCSV() {
       services: r[iServices >= 0 ? iServices : -1] || '',
       noteBooking: r[iNoteBooking >= 0 ? iNoteBooking : -1] || '',
       pdf: r[iPdf >= 0 ? iPdf : -1] || '',
+      active: (r[iActive >= 0 ? iActive : -1] || '').toLowerCase().trim() === 'oui',
       lat: null, lng: null
     }))
     .filter(r => r.name);
@@ -639,6 +661,16 @@ function openModal(r) {
   $('mo-brand-dot').style.background = s ? '#1B63D6' : '#20A862';
   $('mo-brand-txt').textContent = s ? 'Stella' : 'Nohée';
   $('mo-name').textContent = r.name;
+  let moBanner = document.getElementById('mo-inactive-banner');
+  if (!moBanner) {
+    moBanner = document.createElement('div');
+    moBanner.id = 'mo-inactive-banner';
+    moBanner.style.cssText = 'background:#F2F3F5;color:var(--faint);font-size:11.5px;font-weight:600;padding:8px 22px;border-bottom:1px solid var(--border);display:none;align-items:center;gap:6px';
+    moBanner.textContent = 'Résidence inactive — non commercialisable actuellement';
+    const header = document.querySelector('.mo-header');
+    if (header) header.insertAdjacentElement('afterend', moBanner);
+  }
+  moBanner.style.display = (r.active === false) ? 'flex' : 'none';
   $('mo-addr').textContent = r.address;
   $('mo-cap').textContent = r.capacity || 'Non renseigné';
   $('mo-type').textContent = r.type || '—';
@@ -698,12 +730,14 @@ function renderSidebar() {
   $('sb-cnt').textContent = filtered.length;
   const el = $('sb-items');
   if (!filtered.length) { el.innerHTML = '<div style="font-size:11px;color:var(--faint);padding:8px 4px">Aucun résultat</div>'; return; }
-  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name, 'fr'));
-  el.innerHTML = sorted.map(r => {
+  el.innerHTML = filtered.map(r => {
     const s = r.brand.toLowerCase().includes('stella');
-    return `<div class="sb-item" data-name="${r.name.replace(/"/g,'&quot;')}">
+    const city = r.address.split(',').pop().trim().replace(/^\d{5}\s*/, '').substring(0, 14);
+    const inactiveCls = r.active === false ? ' res-inactive' : '';
+    return `<div class="sb-item${inactiveCls}" data-name="${r.name.replace(/"/g,'&quot;')}">
       <span class="sb-item-dot" style="background:${s ? '#1B63D6' : '#20A862'}"></span>
-      <span class="sb-item-name" style="white-space:normal;overflow:visible;text-overflow:unset">${r.name}</span>
+      <span class="sb-item-name">${r.name}</span>
+      <span class="sb-item-city">${city}</span>
     </div>`;
   }).join('');
 }
@@ -728,7 +762,10 @@ function renderTable() {
   window.__rows = data;
   grid.innerHTML = data.map((r, _ri) => {
     const s = r.brand.toLowerCase().includes('stella');
-    return `<div class="rcard" style="border-left-color:${s ? '#1B63D6' : '#20A862'}">
+    const inactiveCls = r.active === false ? ' res-inactive' : '';
+    const statusBadge = r.active === false ? '<div class="rcard-status-badge">Inactif</div>' : '';
+    return `<div class="rcard${inactiveCls}" style="border-left-color:${s ? '#1B63D6' : '#20A862'}">
+      ${statusBadge}
       <div class="rcard-badge ${s ? 'tbadge-s' : 'tbadge-n'}">${s ? 'STELLA' : 'NOHÉE'}</div>
       <div class="rcard-name">${r.name}</div>
       <div class="rcard-addr">
@@ -832,9 +869,10 @@ async function init() {
       const c = await geocode(r.address);
       if (c) {
         r.lat = c[0]; r.lng = c[1];
-        const m = L.marker(c, {icon: makeIcon(r.brand)}).addTo(map);
+        const m = L.marker(c, {icon: makeIcon(r.brand, r.active)}).addTo(map);
         const s = r.brand.toLowerCase().includes('stella');
-        m.bindTooltip(`<b>${r.name}</b><br><span style="opacity:.6;font-size:10px">${s ? 'Stella' : 'Nohée'}</span>`, {direction: 'top', offset: [0, -4]});
+        const statusTip = r.active === false ? '<br><span style="opacity:.65;font-size:9.5px">● Inactif</span>' : '';
+        m.bindTooltip(`<b>${r.name}</b><br><span style="opacity:.6;font-size:10px">${s ? 'Stella' : 'Nohée'}</span>${statusTip}`, {direction: 'top', offset: [0, -4]});
         m.on('click', () => { const found = allData.find(x => x.name === r.name); openModal(found || r); });
         markers[r.name] = m;
       }
