@@ -14,7 +14,7 @@
   --bg:#F4F6FA;--surface:#FFFFFF;--surface2:#F0F3F8;--border:rgba(15,27,45,.08);
   --text:#0F1B2D;--muted:#5B677A;--faint:#A0ABB8;
   --stella:#1B63D6;--stella-l:#EAF1FF;--stella-d:#1249A8;
-  --nohee:#20A862;--nohee-l:#E6F7EF;--nohee-d:#177A48;
+  --nohee:#E87722;--nohee-l:#FDEEE3;--nohee-d:#C15F0F;
   --navy:#0D1826;--navy2:#102240;
   --sh:0 1px 8px rgba(15,27,45,.06),0 4px 16px rgba(15,27,45,.05);
   --sh-lg:0 8px 32px rgba(15,27,45,.14),0 2px 8px rgba(15,27,45,.08);
@@ -571,7 +571,7 @@ function initMap() {
 
 function makeIcon(brand, active) {
   const s = brand.toLowerCase().includes('stella');
-  const c = s ? '#1B63D6' : '#20A862';
+  const c = s ? '#1B63D6' : '#E87722';
   if (active === false) {
     return L.divIcon({
       html: `<div style="width:13px;height:13px;border-radius:50%;background:#fff;border:2.5px dashed ${c};box-shadow:0 1px 4px rgba(0,0,0,.18);position:relative;">
@@ -658,7 +658,7 @@ async function loadCSV() {
 function openModal(r) {
   const s = r.brand.toLowerCase().includes('stella');
   $('mo-brand').className = 'mo-brand ' + (s ? 's' : 'n');
-  $('mo-brand-dot').style.background = s ? '#1B63D6' : '#20A862';
+  $('mo-brand-dot').style.background = s ? '#1B63D6' : '#E87722';
   $('mo-brand-txt').textContent = s ? 'Stella' : 'Nohée';
   $('mo-name').textContent = r.name;
   let moBanner = document.getElementById('mo-inactive-banner');
@@ -735,7 +735,7 @@ function renderSidebar() {
     const city = r.address.split(',').pop().trim().replace(/^\d{5}\s*/, '').substring(0, 14);
     const inactiveCls = r.active === false ? ' res-inactive' : '';
     return `<div class="sb-item${inactiveCls}" data-name="${r.name.replace(/"/g,'&quot;')}">
-      <span class="sb-item-dot" style="background:${s ? '#1B63D6' : '#20A862'}"></span>
+      <span class="sb-item-dot" style="background:${s ? '#1B63D6' : '#E87722'}"></span>
       <span class="sb-item-name">${r.name}</span>
       <span class="sb-item-city">${city}</span>
     </div>`;
@@ -764,7 +764,7 @@ function renderTable() {
     const s = r.brand.toLowerCase().includes('stella');
     const inactiveCls = r.active === false ? ' res-inactive' : '';
     const statusBadge = r.active === false ? '<div class="rcard-status-badge">Inactif</div>' : '';
-    return `<div class="rcard${inactiveCls}" style="border-left-color:${s ? '#1B63D6' : '#20A862'}">
+    return `<div class="rcard${inactiveCls}" style="border-left-color:${s ? '#1B63D6' : '#E87722'}">
       ${statusBadge}
       <div class="rcard-badge ${s ? 'tbadge-s' : 'tbadge-n'}">${s ? 'STELLA' : 'NOHÉE'}</div>
       <div class="rcard-name">${r.name}</div>
@@ -886,7 +886,7 @@ async function init() {
   const placed = Object.keys(markers).length;
   $('status-txt').textContent = `✓ ${placed} / ${allData.length} résidences localisées`;
   $('status-dot').style.animation = 'none';
-  $('status-dot').style.background = '#20A862';
+  $('status-dot').style.background = '#E87722';
   setTimeout(() => $('loader').classList.add('hidden'), 500);
 }
 
